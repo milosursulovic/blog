@@ -32,6 +32,9 @@ app.set('view engine', 'pug')
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
+//public folder
+app.use(express.static(path.join(__dirname, 'public')))
+
 //ROUTES
 
 //render articles, fetching from db
@@ -44,6 +47,15 @@ app.get('/', (req, res) => {
         res.render('index', {
             title: 'Articles',
             articles: articles
+        })
+    })
+})
+
+//render single article
+app.get('/article/:id', (req, res) => {
+    Article.findById(req.params.id, (error, article) => {
+        res.render('article', {
+            article: article
         })
     })
 })
