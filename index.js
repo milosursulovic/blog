@@ -83,5 +83,45 @@ app.post('/articles/add', (req, res) => {
     })
 })
 
+//render edit form
+app.get('/article/edit/:id', (req, res) => {
+    Article.findById(req.params.id, (error, article) => {
+        res.render('edit_article', {
+            title: 'Edit article',
+            article: article
+        })
+    })
+})
+
+//edit article logic
+app.post('/articles/edit/:id', (req, res) => {
+    const article = {}
+    article.title = req.body.title
+    article.author = req.body.author
+    article.body = req.body.body
+
+    const query = { _id: req.params.id }
+
+    Article.update(query, article, error => {
+        if (error) {
+            console.log(error)
+            return
+        }
+        res.redirect('/')
+    })
+})
+
+//delete article
+app.delete('/articles/:id', (req, res) => {
+    const query = { _id: req.params.id }
+    Article.remove(query, error => {
+        if (error) {
+            console.log(error)
+            return
+        }
+        res.send('Success')
+    })
+})
+
 //server listen
 app.listen(3000, () => console.log('Server started on port 3000...'))
