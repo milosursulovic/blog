@@ -4,93 +4,118 @@ const router = express.Router()
 
 //MODELS
 const Article = require('../models/article')
+const User = require('../models/user')
+
+//authentication middleware
+const ensureAuthenticated = (req, res, next) => {
+    if (req.isAuthenticated()) return next()
+    else {
+        req.flash('danger', 'Please login')
+        res.redirect('/users/login')
+    }
+}
 
 //render add article page
-router.get('/add', (req, res) => {
+router.get('/add', ensureAuthenticated, (req, res) => {
     res.render('add_article', {
         title: 'Add Articles'
     })
 })
 
 //save article to db
-router.post('/add', (req, res) => {
+router.post('/add', async (req, res) => {
+    try {
+        req.checkBody('title', 'Title is required').notEmpty()
+        req.checkBody('body', 'Body is required').notEmpty()
 
-    req.checkBody('title', 'Title is required').notEmpty()
-    req.checkBody('author', 'Author is required').notEmpty()
-    req.checkBody('body', 'Body is required').notEmpty()
+        const errors = req.validationErrors()
 
-    const errors = req.validationErrors()
-
-    if (errors) {
-        res.render('add_article', {
-            title: 'Add Article',
-            errors: errors
-        })
-    } else {
-        const article = new Article()
-        article.title = req.body.title
-        article.author = req.body.author
-        article.body = req.body.body
-
-        article.save(error => {
-            if (error) {
-                console.log(error)
-                return
-            }
+        if (errors) {
+            res.render('add_article', {
+                title: 'Add Article',
+                errors: errors
+            })
+        } else {
+            const article = await Article.create({
+                title: req.body.title,
+                author: req.user._id,
+                body: req.body.body
+            })
+            article.save()
             req.flash('success', 'Article Added')
             res.redirect('/')
-        })
+        }
+    } catch (error) {
+        res.send(error)
     }
 })
 
 //render edit form
-router.get('/edit/:id', (req, res) => {
-    Article.findById(req.params.id, (error, article) => {
+router.get('/edit/:id', ensureAuthenticated, async (req, res) => {
+    try {
+        const article =  await Article.findById(req.params.id)
+        if (article.author != req.user._id) {
+            req.flash('danger', 'Not Authorized')
+            return res.redirect('/')
+        }
         res.render('edit_article', {
             title: 'Edit article',
             article: article
         })
-    })
+    } catch (error) {
+        res.send(error)
+    }
 })
 
 //edit article logic
-router.post('/edit/:id', (req, res) => {
-    const article = {}
-    article.title = req.body.title
-    article.author = req.body.author
-    article.body = req.body.body
-
-    const query = { _id: req.params.id }
-
-    Article.update(query, article, error => {
-        if (error) {
-            console.log(error)
-            return
+router.post('/edit/:id', async (req, res) => {
+    try {
+        console.log(req.body.name)
+        const article = {
+            title: req.body.title,
+            author: req.body.name,
+            body: req.body.body
         }
-        req.flash('success', 'Article Updated')
-        res.redirect('/')
-    })
+
+        const query = { _id: req.params.id }
+
+        const update = await Article.update(query, article)
+        if (update) {
+            req.flash('success', 'Article Updated')
+            res.redirect('/')
+        } return
+    } catch(error) {
+        res.send(error)
+    }
 })
 
 //delete article
-router.delete('/:id', (req, res) => {
-    const query = { _id: req.params.id }
-    Article.remove(query, error => {
-        if (error) {
-            console.log(error)
-            return
+router.delete('/:id', async (req, res) => {
+    try {
+        if (!req.user._id) res.status(500).send()
+        const query = { _id: req.params.id }
+        const article = await Article.findById(req.params.id)
+        if (article.author != req.user._id) {
+            res.status(500).send()
+        } else {
+            const remove = await Article.findByIdAndRemove(query)
+            if (remove) res.send('Success')
         }
-        res.send('Success')
-    })
+    } catch (error) {
+        res.send(error)
+    }
 })
 
 //render single article
-router.get('/:id', (req, res) => {
-    Article.findById(req.params.id, (error, article) => {
+router.get('/:id', async (req, res) => {
+    const article = await Article.findById(req.params.id)
+    const user = await User.findById(article.author)
+    if (user) {
         res.render('article', {
-            article: article
+            article: article,
+            author: user.name
         })
-    })
+    }
 })
 
 module.exports = router

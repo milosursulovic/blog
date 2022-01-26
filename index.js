@@ -85,7 +85,7 @@ app.get('/', (req, res) => {
             title: 'Articles',
             articles: articles
         })
-    })
+    }).sort({ createdAt: 'desc' })
 })
 
 //articles router
