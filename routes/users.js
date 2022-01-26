@@ -1,6 +1,7 @@
 //IMPORTS
 const express = require('express')
 const bcrypt = require('bcrypt')
+const passport = require('passport')
 
 //router initialization
 const router = express.Router()
@@ -49,6 +50,22 @@ router.post('/register', async (req, res) => {
 //render login page
 router.get('/login', (req, res) => {
     res.render('login')
+})
+
+//login user
+router.post('/login', (req, res, next) => {
+    passport.authenticate('local', {
+        successRedirect: '/',
+        failureRedirect: '/users/login',
+        failureFlash: true
+    })(req, res, next)
+})
+
+//logout user
+router.get('/logout', (req, res) => {
+    req.logout()
+    req.flash('success', 'You are logged out')
+    res.redirect('/users/login')
 })
 
 module.exports = router

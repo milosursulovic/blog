@@ -4,19 +4,11 @@ const path = require('path')
 const mongoose = require('mongoose')
 const session = require('express-session')
 const expressValidator = require('express-validator')
+const connectDb = require('./config/database')
+const passport = require('passport')
 
 //connecting to db
-mongoose.connect('mongodb://localhost/blog', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
-
-//connect to db once
-const db = mongoose.connection
-db.once('open', () => console.log('Connected to MongoDB...'))
-
-//check for db errors
-db.on('error', error => console.log(error))
+connectDb()
 
 //init app
 const app = express()
@@ -70,7 +62,17 @@ app.use(expressValidator({
     }
 }))
 
+//passport config
+require('./middleware/passport')(passport)
+app.use(passport.initialize())
+app.use(passport.session())
+
 //ROUTES
+
+app.get('*', (req, res, next) => {
+    res.locals.user = req.user || null
+    next()
+})
 
 //render articles, fetching from db
 app.get('/', (req, res) => {
